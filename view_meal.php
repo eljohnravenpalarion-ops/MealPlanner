@@ -452,7 +452,53 @@ foreach ($displayGroups as $categoryKey => $group) {
     }
 }
 ?>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const searchInput = document.getElementById("liveSearch");
+    const mealCards = document.querySelectorAll(".meal-card");
+    const categoryHeaders = document.querySelectorAll(".category-header");
+
+    if (!searchInput) return;
+
+    function filterMeals() {
+        const query = searchInput.value.trim().toLowerCase();
+
+        mealCards.forEach(function (card) {
+            const title = card.querySelector("h2");
+            const mealName = title
+                ? title.textContent.trim().toLowerCase()
+                : "";
+
+            card.style.display =
+                query === "" || mealName.startsWith(query)
+                    ? ""
+                    : "none";
+        });
+
+        categoryHeaders.forEach(function (header) {
+            const category = (header.dataset.category || "")
+                .trim().toLowerCase();
+
+            const hasVisibleMeal = Array.from(mealCards).some(
+                function (card) {
+                    return (
+                        (card.dataset.category || "").toLowerCase() === category &&
+                        card.style.display !== "none"
+                    );
+                }
+            );
+
+            header.style.display =
+                query === "" || hasVisibleMeal ? "" : "none";
+        });
+    }
+
+    searchInput.addEventListener("input", filterMeals);
+    filterMeals();
+});
 </script>
+
 
 
 </body> 
