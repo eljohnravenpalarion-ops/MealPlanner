@@ -89,7 +89,7 @@ $days = [
             <p>Welcome to your dashboard!</p>
         </div>
 
-     <img src="image/dashboard-food.jpg.jfif"
+     <img src="dashboard-food.jpg.jfif"
      alt="Fresh vegetables and healthy food"
      class="dashboard-food-image">
     </header>
