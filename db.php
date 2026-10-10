@@ -1,24 +1,22 @@
-<?php
 
-$host = getenv("DB_HOST") ?: "localhost";
-$username = getenv("DB_USER") ?: "root";
-$password = getenv("DB_PASSWORD") ?: "";
-$database = getenv("DB_NAME") ?: "meal_planner";
-$port = (int)(getenv("DB_PORT") ?: 3306);
+<?php
+$host = getenv('DB_HOST') ?: 'localhost';
+$dbUser = getenv('DB_USER') ?: 'root';
+$dbPassword = getenv('DB_PASSWORD') ?: '';
+$dbName = getenv('DB_NAME') ?: 'meal_planner';
+$dbPort = (int) (getenv('DB_PORT') ?: 3306);
 
 $conn = mysqli_connect(
     $host,
-    $username,
-    $password,
-    $database,
-    $port
+    $dbUser,
+    $dbPassword,
+    $dbName,
+    $dbPort
 );
 
 if (!$conn) {
-    error_log("Database connection failed: " . mysqli_connect_error());
-    die("Database connection failed. Please check the configuration.");
+    error_log('Database connection failed: ' . mysqli_connect_error());
+    die('Database connection failed.');
 }
 
-mysqli_set_charset($conn, "utf8mb4");
-
-?>
+mysqli_set_charset($conn, 'utf8mb4');
