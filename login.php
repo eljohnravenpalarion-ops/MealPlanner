@@ -59,7 +59,7 @@ if (password_verify($password, $user["password"])){
 
     <div class="login-image">
 
-        <img src="image/login-food.jpg.jfif"
+        <img src="login-food.jpg.jfif"
              alt="Fresh vegetables and healthy food">
 
         <div class="login-image-text">
