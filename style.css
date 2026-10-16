@@ -2665,3 +2665,8 @@ a[href="add_meal.php"] svg,
     font-size: 13px;
     box-sizing: border-box;
 }
+
+/* MATCH CATEGORY FILTER TEXT SIZE */
+#categoryFilter {
+    font-size: 13px !important;
+}
