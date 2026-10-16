@@ -1,6 +1,12 @@
+
 FROM php:8.2-apache
 
-RUN docker-php-ext-install mysqli && a2enmod rewrite
+# Ensure Apache loads only the compatible MPM
+RUN set -eux; \
+    a2dismod mpm_event || true; \
+    a2dismod mpm_worker || true; \
+    a2enmod mpm_prefork rewrite; \
+    docker-php-ext-install mysqli
 
 WORKDIR /var/www/html
 
