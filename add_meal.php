@@ -1,197 +1,380 @@
-<?php 
+
+<?php
 session_start();
+
+if (!isset($_SESSION["user_id"])) {
+    header("Location: login.php");
+    exit();
+}
+
 require_once "db.php";
 require_once "linear_search.php";
+
+$user_id = (int) $_SESSION["user_id"];
 $message = "";
+$success = isset($_GET["success"]) && $_GET["success"] === "1";
 
-if ($_SERVER ["REQUEST_METHOD"]=="POST") {
-    $meal_name = $_POST ["meal_name"];
-   $category = $_POST["category"];
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-if ($category == "Custom") {
+    $meal_name = trim($_POST["meal_name"] ?? "");
+    $category = $_POST["category"] ?? "";
+    $day = $_POST["day"] ?? "";
+    $calories = trim($_POST["calories"] ?? "");
+    $ingredients = trim($_POST["ingredients"] ?? "");
+    $description = trim($_POST["description"] ?? "");
 
-    $category = trim($_POST["custom_category"]);
+    $validCategories = ["Breakfast", "Lunch", "Dinner", "Snacks"];
 
-    if ($category == "") {
-        echo "Please enter a custom category.";
-        exit();
-    }
-}
-
-if ($category == "") {
-    echo "Category is required.";
-    exit();
-}
-    $day = $_POST ["day"];
     $validDays = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday"
-];
+        "Monday", "Tuesday", "Wednesday", "Thursday",
+        "Friday", "Saturday", "Sunday"
+    ];
 
-if (!in_array($day, $validDays)) {
-    echo "Please select a valid day.";
-    exit();
-}
-    $calories = $_POST ["calories"];
-    $ingredients = $_POST ["ingredients"];
-    $description = $_POST ["description"];
-    if ($meal_name == "" || $category == "" || $day == "" ||
-    $calories == "" || $ingredients == "" || $description == "") {
+    if (
+        $meal_name === "" ||
+        $ingredients === "" ||
+        $description === "" ||
+        $calories === ""
+    ) {
+        $message = "Please fill in all fields.";
 
-    echo "Please fill in all fields.";
-    exit();
-}
+    } elseif (!in_array($category, $validCategories, true)) {
+        $message = "Please select a valid category.";
 
-if (!is_numeric($calories) || $calories < 0) {
-    echo "Calories must be a valid number.";
-    exit();
-}
+    } elseif (!in_array($day, $validDays, true)) {
+        $message = "Please select a valid day.";
 
-    $user_id = $_SESSION["user_id"];
-    $meal_name = mysqli_real_escape_string($conn, $meal_name);
-    $category = mysqli_real_escape_string($conn, $category);
-    $day = mysqli_real_escape_string($conn, $day);
-    $calories = mysqli_real_escape_string($conn, $calories);
-    $ingredients = mysqli_real_escape_string($conn, $ingredients);
-    $description = mysqli_real_escape_string($conn, $description);
+    } elseif (!is_numeric($calories) || !is_finite((float)$calories) || (float)$calories < 0) {
+        $message = "Calories must be a valid non-negative number.";
 
+    } else {
 
-    $sql = "SELECT * FROM meal
-    WHERE user_id = '$user_id'";
+        // Get existing meals belonging to this user
+        $stmt = mysqli_prepare(
+            $conn,
+            "SELECT * FROM meal WHERE user_id = ?"
+        );
 
-$result = mysqli_query($conn, $sql);
+        mysqli_stmt_bind_param($stmt, "i", $user_id);
+        mysqli_stmt_execute($stmt);
 
-$existingMeals = [];
+        $result = mysqli_stmt_get_result($stmt);
+        $existingMeals = [];
 
-while ($meal = mysqli_fetch_assoc($result)) {
-    $existingMeals[] = $meal;
-}
-if (linearSearchMeal($existingMeals, $day, $category)) { 
+        while ($meal = mysqli_fetch_assoc($result)) {
+            $existingMeals[] = $meal;
+        }
 
-    $message = "This day category are already occupied."; 
+        mysqli_stmt_close($stmt);
 
-} else {
+        // Check if this day and category are already occupied
+        if (linearSearchMeal($existingMeals, $day, $category)) {
 
-    $sql = "INSERT INTO meal  
-     (user_id, meal_name, category, day, calories, ingredients, description)  
-     VALUES   
-     ('$user_id', '$meal_name','$category','$day', '$calories', '$ingredients', '$description')"; 
- 
-    if (mysqli_query($conn,$sql)) { 
-        header("Location: view_meal.php"); 
-        exit();  
+            $message = "This day and category are already occupied.";
+
+        } else {
+
+            // Save the meal using a prepared statement
+            $stmt = mysqli_prepare(
+                $conn,
+                "INSERT INTO meal
+                (user_id, meal_name, category, day, calories,
+                 ingredients, description)
+                VALUES (?, ?, ?, ?, ?, ?, ?)"
+            );
+
+            $calories_value = (float) $calories;
+
+            mysqli_stmt_bind_param(
+                $stmt,
+                "isssdss",
+                $user_id,
+                $meal_name,
+                $category,
+                $day,
+                $calories_value,
+                $ingredients,
+                $description
+            );
+
+            if (mysqli_stmt_execute($stmt)) {
+                mysqli_stmt_close($stmt);
+
+                // Stay on this page after successfully adding a meal
+                header("Location: add_meal.php?success=1");
+                exit();
+
+            } else {
+                $message = "Unable to add meal. Please try again.";
+                mysqli_stmt_close($stmt);
+            }
+        }
     }
 }
+
+// Fetch the five most recently added meals for this user
+// Assumes the meal table's primary key is named id.
+$stmt = mysqli_prepare(
+    $conn,
+    "SELECT meal_name, category, day, calories, description
+     FROM meal
+     WHERE user_id = ?
+     ORDER BY id DESC
+     LIMIT 5"
+);
+
+mysqli_stmt_bind_param($stmt, "i", $user_id);
+mysqli_stmt_execute($stmt);
+
+$recentResult = mysqli_stmt_get_result($stmt);
+$recentMeals = [];
+
+while ($meal = mysqli_fetch_assoc($recentResult)) {
+    $recentMeals[] = $meal;
 }
 
-
-
+mysqli_stmt_close($stmt);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Add Meal - Meal Planner</title>
+
     <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
+
 <body>
+
     <?php require_once "sidebar.php"; ?>
-   
-<?php if ($message != ""): ?>
 
-<div class="warning-popup" id="warningPopup">
+    <main class="add-meal-page">
 
-    <div class="warning-box">
+        <?php if ($message !== ""): ?>
+            <div class="warning-popup" id="warningPopup">
+                <div class="warning-box">
+                    <div class="warning-icon">⚠️</div>
+                    <h2>Unable to Add Meal</h2>
 
-        <div class="warning-icon">⚠️</div>
+                    <p>
+                        <?php echo htmlspecialchars($message); ?>
+                    </p>
 
-        <h2>Meal Already Exists</h2>
+                    <button type="button" onclick="closeWarning()">
+                        OK
+                    </button>
+                </div>
+            </div>
+        <?php endif; ?>
 
-        <p><?php echo htmlspecialchars($message); ?></p>
+        <?php if ($success): ?>
+            <div class="meal-success-message">
+                <i data-lucide="check-circle"></i>
+                <span>Meal added successfully!</span>
+            </div>
+        <?php endif; ?>
 
-        <button type="button" onclick="closeWarning()">OK</button>
+        <h1 class="add-meal-title">Add Meal</h1>
 
-    </div>
+        <!-- ADD MEAL FORM -->
+        <div class="form-card add-meal-card">
 
+            <form method="POST" class="add-meal-grid">
+
+                <div class="add-meal-field">
+                    <label for="meal_name">Meal Name</label>
+                    <input
+                        type="text"
+                        id="meal_name"
+                        name="meal_name"
+                        value="<?php echo htmlspecialchars($_POST["meal_name"] ?? ""); ?>"
+                        required
+                    >
+                </div>
+
+                <div class="add-meal-field">
+                    <label for="category">Category</label>
+                    <select name="category" id="category" required>
+                        <option value="">Select Category</option>
+
+                        <?php foreach (["Breakfast", "Lunch", "Dinner", "Snacks"] as $cat): ?>
+                            <option
+                                value="<?php echo $cat; ?>"
+                                <?php echo (($_POST["category"] ?? "") === $cat) ? "selected" : ""; ?>
+                            >
+                                <?php echo $cat; ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="add-meal-field">
+                    <label for="day">Day</label>
+                    <select name="day" id="day" required>
+                        <option value="">Select Day</option>
+
+                        <?php foreach (
+                            ["Monday", "Tuesday", "Wednesday", "Thursday",
+                             "Friday", "Saturday", "Sunday"] as $weekday
+                        ): ?>
+                            <option
+                                value="<?php echo $weekday; ?>"
+                                <?php echo (($_POST["day"] ?? "") === $weekday) ? "selected" : ""; ?>
+                            >
+                                <?php echo $weekday; ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="add-meal-field">
+                    <label for="calories">Calories</label>
+                    <input
+                        type="number"
+                        id="calories"
+                        name="calories"
+                        min="0"
+                        step="any"
+                        value="<?php echo htmlspecialchars($_POST["calories"] ?? ""); ?>"
+                        required
+                    >
+                </div>
+
+                <div class="add-meal-field">
+                    <label for="ingredients">Ingredients</label>
+                    <textarea
+                        id="ingredients"
+                        name="ingredients"
+                        rows="4"
+                        required
+                    ><?php echo htmlspecialchars($_POST["ingredients"] ?? ""); ?></textarea>
+                </div>
+
+                <div class="add-meal-field">
+                    <label for="description">Description</label>
+                    <textarea
+                        id="description"
+                        name="description"
+                        rows="4"
+                        required
+                    ><?php echo htmlspecialchars($_POST["description"] ?? ""); ?></textarea>
+                </div>
+
+                <div class="add-meal-actions">
+                    <button type="submit">
+                        <i data-lucide="plus"></i>
+                        Add Meal
+                    </button>
+                </div>
+
+            </form>
+        </div>
+
+        <!-- RECENTLY ADDED MEALS -->
+        <section class="recent-meals-section">
+
+            <div class="recent-meals-heading">
+                <div>
+                    <h2>Recently Added Meals</h2>
+                    <p>Your five most recently added meals.</p>
+                </div>
+
+                <span class="recent-meals-count">
+                    <?php echo count($recentMeals); ?>
+                    <?php echo count($recentMeals) === 1 ? "meal" : "meals"; ?>
+                </span>
+            </div>
+
+            <?php if (!empty($recentMeals)): ?>
+
+                <div class="recent-meals-list">
+
+                    <?php foreach ($recentMeals as $meal): ?>
+
+                        <article class="recent-meal-card">
+
+                            <div class="recent-meal-icon">
+                                <i data-lucide="utensils"></i>
+                            </div>
+
+                            <div class="recent-meal-info">
+
+                                <h3>
+                                    <?php echo htmlspecialchars($meal["meal_name"]); ?>
+                                </h3>
+
+                                <div class="recent-meal-meta">
+                                    
+<div class="recent-meal-meta">
+    <span class="meal-category">
+        <?php echo htmlspecialchars($meal["category"]); ?>
+    </span>
+
+    <span class="meal-day">
+        <?php echo htmlspecialchars($meal["day"]); ?>
+    </span>
+
+    <span class="meal-calories">
+        <?php
+        echo htmlspecialchars(
+            rtrim(
+                rtrim(
+                    number_format((float)$meal["calories"], 2, ".", ""),
+                    "0"
+                ),
+                "."
+            )
+        );
+        ?>
+        calories
+    </span>
 </div>
 
-<?php endif; ?>
-    
-    <h1 class="add-meal-title">Add Meal</h1>
+                                </div>
 
-    <div class="form-card">
+                                <p class="recent-meal-description">
+                                    <?php echo htmlspecialchars($meal["description"]); ?>
+                                </p>
 
-    <form method="POST">
+                            </div>
 
+                        </article>
 
-        <label> Meal Name </label>
-       <input type="text" name="meal_name" required>
+                    <?php endforeach; ?>
 
-        <br> <br>
+                </div>
 
-        <label> Category </label>
+            <?php else: ?>
 
-    <select name="category" required>
-    <option value="Breakfast">Breakfast</option>
-    <option value="Lunch">Lunch</option>
-    <option value="Dinner">Dinner</option>
-    <option value="Snacks">Snacks</option>
-    <option value="Custom">Custom</option>
-    </select> 
+                <div class="recent-meals-empty">
+                    <i data-lucide="clipboard-list"></i>
+                    <h3>No meals added yet</h3>
+                    <p>Your newly added meals will appear here.</p>
+                </div>
 
-        <input type="text" name="custom_category" placeholder="Enter custom category">
+            <?php endif; ?>
 
-        <br> <br>
+        </section>
 
-        <label> Day </label>
+    </main>
 
-<select name="day" required>
-    <option value="">Select Day</option>
-    <option value="Monday">Monday</option>
-    <option value="Tuesday">Tuesday</option>
-    <option value="Wednesday">Wednesday</option>
-    <option value="Thursday">Thursday</option>
-    <option value="Friday">Friday</option>
-    <option value="Saturday">Saturday</option>
-    <option value="Sunday">Sunday</option>
-</select>
+    <script>
+        if (window.lucide) {
+            lucide.createIcons();
+        }
 
-        <br> <br>
+        function closeWarning() {
+            const popup = document.getElementById("warningPopup");
 
-        <label> Calories </label>
-       <input type="number" name="calories" required>
+            if (popup) {
+                popup.style.display = "none";
+            }
+        }
+    </script>
 
-        <br> <br>
-
-        <label>Ingredients:</label>
-       <textarea name="ingredients" required></textarea>
-        
-        <br> <br>
-  
-        <label>Description:</label>
-      <textarea name="description" required></textarea>
-
-        <br> <br>
-
-        <button type="submit">Add Meal</button>
-    
-    </form>
-
-</div>
-
-
-<script>
-
-function closeWarning() {
-    document.getElementById("warningPopup").style.display = "none";
-}
-
-</script>
 </body>
 </html>
