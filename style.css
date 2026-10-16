@@ -2670,3 +2670,10 @@ a[href="add_meal.php"] svg,
 #categoryFilter {
     font-size: 13px !important;
 }
+
+
+/* MATCH SEARCH FILTER TEXT SIZE */
+#searchInput,
+#searchInput::placeholder {
+    font-size: 13px !important;
+}

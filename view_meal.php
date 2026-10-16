@@ -113,7 +113,7 @@ $totalMeals = count($meals);
             <input
                 type="search"
                 id="searchInput"
-                placeholder="Search meals, ingredients..."
+                "Search meals..."
                 aria-label="Search meals"
                 autocomplete="off"
             >
