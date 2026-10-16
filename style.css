@@ -2657,15 +2657,11 @@ a[href="add_meal.php"] svg,
 
 /* FIX SORT FILTER WIDTH */
 #sortFilter {
-    width: 260px !important;
-    min-width: 260px !important;
+    width: 180px !important;
+    min-width: 0 !important;
     max-width: 100%;
+    flex: 0 1 180px;
+    height: 40px;
+    font-size: 13px;
     box-sizing: border-box;
-}
-
-@media (max-width: 700px) {
-    #sortFilter {
-        width: 100% !important;
-        min-width: 0 !important;
-    }
 }
