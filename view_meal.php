@@ -116,7 +116,7 @@ $totalMeals = count($meals);
                 "Search meals..."
                 aria-label="Search meals"
                 autocomplete="off"
-            >
+             placeholder="Search Meal">
 
             <select
                 name="category"
