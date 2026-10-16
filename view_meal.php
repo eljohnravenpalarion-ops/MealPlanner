@@ -1,505 +1,379 @@
-<?php  
 
-session_start(); 
+<?php
+session_start();
 
-require_once "db.php"; 
-require_once "linked_list.php"; 
-require_once "insertion_sort.php"; 
-require_once "binary_search.php"; 
+if (!isset($_SESSION["user_id"])) {
+    header("Location: login.php");
+    exit();
+}
 
+require_once "db.php";
 
-if (!isset($_SESSION["user_id"])) { 
+$user_id = (int) $_SESSION["user_id"];
+$category = trim($_GET["category"] ?? "");
+$sort = $_GET["sort"] ?? "newest";
 
-    header ("Location: login.php"); 
-    exit(); 
+$sortOptions = [
+    "az"       => "meal_name ASC",
+    "za"       => "meal_name DESC",
+    "low_high" => "calories ASC",
+    "high_low" => "calories DESC",
+    "newest"   => "id DESC"
+];
 
-} 
+$orderBy = $sortOptions[$sort] ?? "id DESC";
 
+$allowedCategories = [
+    "Breakfast",
+    "Lunch",
+    "Dinner",
+    "Snacks"
+];
 
-$user_id = $_SESSION ["user_id"]; 
+if (!in_array($category, $allowedCategories, true)) {
+    $category = "";
+}
 
+$sql = "SELECT * FROM meal WHERE user_id = ?";
+$types = "i";
+$params = [$user_id];
 
-$search = $_GET ["search"]?? "" ; 
-$category = $_GET["category"]?? ""; 
-$sort = $_GET ["sort"]??""; 
-$exact_search = $_GET["exact_search"] ?? ""; 
+if ($category !== "") {
+    $sql .= " AND category = ?";
+    $types .= "s";
+    $params[] = $category;
+}
 
+$sql .= " ORDER BY " . $orderBy;
 
-$search = mysqli_real_escape_string($conn, $search); 
-$category = mysqli_real_escape_string($conn, $category); 
-$exact_search = mysqli_real_escape_string($conn, $exact_search); 
+$stmt = mysqli_prepare($conn, $sql);
 
+if (!$stmt) {
+    die("Unable to load meals. Please try again.");
+}
 
-$user_id = (int)$user_id; 
+$bindParams = [$types];
 
+foreach ($params as $key => $value) {
+    $bindParams[] = &$params[$key];
+}
 
-$sql = "SELECT * FROM meal 
-        WHERE user_id = '$user_id' 
-        AND ( 
-            meal_name LIKE '%$search%' 
-            OR category LIKE '%$search%' 
-            OR ingredients LIKE '%$search%' 
-            OR day LIKE '%$search%' 
-        )"; 
+call_user_func_array(
+    "mysqli_stmt_bind_param",
+    array_merge([$stmt], $bindParams)
+);
 
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
 
-if ($category !="") { 
+$meals = [];
 
-    $sql .= " AND category = '$category'"; 
+while ($meal = mysqli_fetch_assoc($result)) {
+    $meals[] = $meal;
+}
 
-} 
+$totalMeals = count($meals);
+?>
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-$result = mysqli_query ($conn, $sql); 
+    <title>My Meals | Meal Planner</title>
 
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
 
-$meals=[]; 
-
-
-while ($meal= mysqli_fetch_assoc($result)) { 
-
-    $meals[]=$meal; 
-
-} 
-
-
-/* CALORIES LOW TO HIGH */
-
-if ($sort=="calories_asc") {  
-
-    for ($i = 0; $i < count($meals) -1;  $i++) { 
-
-        for ($j = 0; $j < count ($meals)-$i -1; $j++) { 
-
-            if ($meals[$j]["calories"] > $meals[$j + 1]["calories"]) { 
-
-                $temp = $meals[$j]; 
-
-                $meals[$j] = $meals[$j+1]; 
-
-                $meals[$j + 1] = $temp; 
-
-            } 
-
-        } 
-
-    } 
-
-} 
-
-
-/* CALORIES HIGH TO LOW */
-
-if ($sort == "calories_desc") { 
-
-    for ($i = 0; $i < count($meals) - 1; $i++) { 
-
-        for ($j = 0; $j < count($meals) - $i - 1; $j++) { 
-
-            if ($meals[$j]["calories"] < $meals[$j + 1]["calories"]) { 
-
-                $temp = $meals[$j]; 
-
-                $meals[$j] = $meals[$j + 1]; 
-
-                $meals[$j + 1] = $temp; 
-
-            } 
-
-        } 
-
-    } 
-
-} 
-
-
-/* MEAL NAME A-Z */
-
-if ($sort == "name_asc") { 
-
-    insertionSortMeals($meals); 
-
-} 
-
-
-/* EXACT SEARCH */
-
-if ($exact_search != "") { 
-
-    insertionSortMeals($meals); 
-
-    $foundMeal = binarySearchMeal($meals, $exact_search); 
-
-    if ($foundMeal) { 
-
-        echo "<h2>Search Result</h2>"; 
-
-        echo "<p>Meal Found: " . 
-             htmlspecialchars($foundMeal["meal_name"]) . 
-             "</p>"; 
-
-        $meals = [$foundMeal];
-
-    } else { 
-
-        echo "<p>Meal not found.</p>"; 
-
-        $meals = [];
-
-    } 
-} 
-
-
-/* LINKED LIST */
-
-$mealList = new LinkedList(); 
-
-
-foreach ($meals as $meal) { 
-
-    $mealList->add($meal); 
-
-} 
-
-?> 
-
-
-<!DOCTYPE html> 
-
-<html lang="en"> 
-
-<head> 
-
-    <meta charset="UTF-8"> 
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
-
-    <title>My Meals</title> 
-
-     
-    <link rel="stylesheet" href="style.css"> 
-
-</head> 
-
-
-<body> 
-
+<body>
 
 <?php require_once "sidebar.php"; ?>
 
-
-<?php 
-
-if (isset($_GET["deleted"]) && $_GET["deleted"] == "1") { 
-
-    echo '<p class="success-message">
-            Meal deleted successfully.
-          </p>'; 
-
-} 
-
-?> 
-
-
-<h1>My Meals</h1> 
-
-
-<form method="GET" class="filter-form"> 
-
-
-    <!-- LIVE SEARCH INPUT -->
-
-    <input 
-        type="text" 
-        id="liveSearch"
-        name="search" 
-        placeholder="Search meals...."
-        autocomplete="off"
-        value="<?php echo htmlspecialchars($_GET["search"] ?? ""); ?>"
-    > 
-
-
-    <!-- EXACT SEARCH -->
-
-    <input 
-        type="text" 
-        name="exact_search" 
-        placeholder="Exact meal name"
-        value="<?php echo htmlspecialchars($_GET["exact_search"] ?? ""); ?>"
-    > 
-
-
-    <!-- CATEGORY -->
-
-    <select name="category">    
-
-        <option value=""> All Categories </option> 
-
-        <option value="Breakfast"
-            <?php echo (($_GET["category"] ?? "") == "Breakfast") ? "selected" : ""; ?>>
-            Breakfast
-        </option> 
-
-        <option value="Lunch"
-            <?php echo (($_GET["category"] ?? "") == "Lunch") ? "selected" : ""; ?>>
-            Lunch
-        </option> 
-
-        <option value="Dinner"
-            <?php echo (($_GET["category"] ?? "") == "Dinner") ? "selected" : ""; ?>>
-            Dinner
-        </option> 
-
-        <option value="Snacks"
-            <?php echo (($_GET["category"] ?? "") == "Snacks") ? "selected" : ""; ?>>
-            Snacks
-        </option> 
-
-    </select> 
-
-
-    <!-- SORT -->
-
-    <select name="sort"> 
-
-        <option value="">Sort By</option> 
-
-        <option value="name_asc"
-            <?php echo (($_GET["sort"] ?? "") == "name_asc") ? "selected" : ""; ?>>
-            Meal Name A-Z
-        </option> 
-
-        <option value="calories_asc"
-            <?php echo (($_GET["sort"] ?? "") == "calories_asc") ? "selected" : ""; ?>>
-            Calories Low-High
-        </option> 
-
-        <option value="calories_desc"
-            <?php echo (($_GET["sort"] ?? "") == "calories_desc") ? "selected" : ""; ?>>
-            Calories High-Low
-        </option> 
-
-    </select> 
-
-
-    <!-- SEARCH BUTTON LAST -->
-
-    <button type="submit">
-        Search
-    </button>
-
-
-</form> 
-
-
-
-
-<?php
-
-$orderedMeals = [];
-$current = $mealList->head;
-
-while ($current != null) {
-    $orderedMeals[] = $current->data;
-    $current = $current->next;
-}
-
-$showCategoryHeaders = ($sort == "");
-
-if ($showCategoryHeaders) {
-
-    $groupedMeals = [
-        "breakfast" => ["title" => "Breakfast", "meals" => []],
-        "lunch" => ["title" => "Lunch", "meals" => []],
-        "dinner" => ["title" => "Dinner", "meals" => []],
-        "snacks" => ["title" => "Snacks", "meals" => []],
-        "pre-workout" => ["title" => "Pre-workout", "meals" => []]
-    ];
-
-    $displayNames = [
-        "breakfast" => "Breakfast",
-        "lunch" => "Lunch",
-        "dinner" => "Dinner",
-        "snacks" => "Snacks",
-        "pre-workout" => "Pre-workout"
-    ];
-
-    foreach ($orderedMeals as $meal) {
-
-        $categoryName = trim($meal["category"] ?? "");
-        $categoryKey = strtolower($categoryName);
-
-        if ($categoryKey == "") {
-            $categoryKey = "uncategorized";
-            $categoryName = "Uncategorized";
-        }
-
-        if (!isset($groupedMeals[$categoryKey])) {
-            $groupedMeals[$categoryKey] = [
-                "title" => $displayNames[$categoryKey]
-                    ?? ucwords($categoryName),
-                "meals" => []
-            ];
-        }
-
-        $groupedMeals[$categoryKey]["meals"][] = $meal;
-    }
-
-    $categoryOrder = [
-        "breakfast",
-        "lunch",
-        "dinner",
-        "snacks",
-        "pre-workout"
-    ];
-
-    uksort($groupedMeals, function ($a, $b) use ($categoryOrder) {
-
-        $posA = array_search($a, $categoryOrder, true);
-        $posB = array_search($b, $categoryOrder, true);
-
-        $posA = ($posA === false) ? 99 : $posA;
-        $posB = ($posB === false) ? 99 : $posB;
-
-        if ($posA == $posB) {
-            return strcmp($a, $b);
-        }
-
-        return $posA <=> $posB;
-    });
-
-    $displayGroups = $groupedMeals;
-
-} else {
-
-    // Preserve the global sorted order.
-    $displayGroups = [
-        "sorted" => [
-            "title" => "",
-            "meals" => $orderedMeals
-        ]
-    ];
-}
-
-foreach ($displayGroups as $categoryKey => $group) {
-
-    if ($showCategoryHeaders) {
-?>
-
-    <h2 class="category-header"
-        data-category="<?php echo htmlspecialchars($categoryKey); ?>">
-        <?php echo htmlspecialchars($group["title"]); ?>
-    </h2>
-
-<?php
-    }
-
-    foreach ($group["meals"] as $meal) {
-?>
-
-    <div class="meal-card"
-         data-category="<?php echo htmlspecialchars(strtolower($meal["category"])); ?>">
-
-        <h2><?php echo htmlspecialchars($meal["meal_name"]); ?></h2>
-
-        <p><strong>Category:</strong>
-            <?php echo htmlspecialchars($meal["category"]); ?>
-        </p>
-
-        <p><strong>Day:</strong>
-            <?php echo htmlspecialchars($meal["day"]); ?>
-        </p>
-
-        <p><strong>Calories:</strong>
-            <?php echo htmlspecialchars($meal["calories"]); ?>
-        </p>
-
-        <p><strong>Ingredients:</strong>
-            <?php echo htmlspecialchars($meal["ingredients"]); ?>
-        </p>
-
-        <p><strong>Description:</strong>
-            <?php echo htmlspecialchars($meal["description"]); ?>
-        </p>
-
-        <div class="meal-actions">
-
-            <a class="action-button" href="recent_meal.php">
-                Recently Viewed
-            </a>
-
-            <a class="action-button"
-               href="view_single_meal.php?id=<?php echo $meal["id"]; ?>">
-                View
-            </a>
-
-            <a class="action-button"
-               href="edit_meal.php?id=<?php echo $meal["id"]; ?>">
-                Edit
-            </a>
-
-            <a class="action-button delete-button"
-               href="delete_meal.php?id=<?php echo $meal["id"]; ?>"
-               onclick="return confirm('Are you sure to delete this meal?');">
-                Delete
-            </a>
-
+<main class="meals-page">
+
+    <header class="meals-header">
+        <div>
+            <h1 class="meals-heading">My Meals</h1>
         </div>
 
+        <a href="add_meal.php" class="add-meal-button">
+            + Add Meal
+        </a>
+    </header>
+
+    <section class="meal-toolbar">
+        <form
+            action="view_meal.php"
+            method="GET"
+            class="meal-search-form"
+            id="mealSearchForm"
+        >
+
+            <input
+                type="search"
+                id="searchInput"
+                placeholder="Search meals, ingredients..."
+                aria-label="Search meals"
+                autocomplete="off"
+            >
+
+            <select
+                name="category"
+                id="categoryFilter"
+                aria-label="Filter by category"
+            >
+                <option value="">All Categories</option>
+
+                <?php foreach ($allowedCategories as $item): ?>
+                    <option
+                        value="<?php echo htmlspecialchars($item, ENT_QUOTES, 'UTF-8'); ?>"
+                        <?php echo $category === $item ? "selected" : ""; ?>
+                    >
+                        <?php echo htmlspecialchars($item, ENT_QUOTES, 'UTF-8'); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+
+            <select
+                name="sort"
+                id="sortFilter"
+                aria-label="Sort meals"
+            >
+                <option value="newest" <?php echo $sort === "newest" ? "selected" : ""; ?>>
+                    Newest First
+                </option>
+                <option value="az" <?php echo $sort === "az" ? "selected" : ""; ?>>
+                    Name: A–Z
+                </option>
+                <option value="za" <?php echo $sort === "za" ? "selected" : ""; ?>>
+                    Name: Z–A
+                </option>
+                <option value="low_high" <?php echo $sort === "low_high" ? "selected" : ""; ?>>
+                    Calories: Low to High
+                </option>
+                <option value="high_low" <?php echo $sort === "high_low" ? "selected" : ""; ?>>
+                    Calories: High to Low
+                </option>
+            </select>
+
+        </form>
+    </section>
+
+    <h2 class="meal-results-heading" id="mealResultsHeading">
+        Your Meals (<?php echo $totalMeals; ?>)
+    </h2>
+
+    <div class="meal-table-wrapper">
+        <table class="meal-table" id="mealTable">
+            <thead>
+                <tr>
+                    <th>Meal Name</th>
+                    <th>Category</th>
+                    <th>Day</th>
+                    <th>Calories</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+
+            <tbody id="mealTableBody">
+
+                <?php foreach ($meals as $meal): ?>
+
+                    <?php
+                    $searchableText = implode(" ", [
+                        $meal["meal_name"] ?? "",
+                        $meal["category"] ?? "",
+                        $meal["ingredients"] ?? "",
+                        $meal["day"] ?? "",
+                        $meal["description"] ?? ""
+                    ]);
+                    ?>
+
+                    <tr
+                        class="meal-row"
+                        data-search="<?php
+                            echo htmlspecialchars(
+                                $searchableText,
+                                ENT_QUOTES | ENT_SUBSTITUTE,
+                                'UTF-8'
+                            );
+                        ?>"
+                    >
+                        <td class="meal-table-name">
+                            <?php
+                            echo htmlspecialchars(
+                                $meal["meal_name"] ?? "Untitled Meal",
+                                ENT_QUOTES,
+                                "UTF-8"
+                            );
+                            ?>
+                        </td>
+
+                        <td>
+                            <?php
+                            echo htmlspecialchars(
+                                $meal["category"] ?? "",
+                                ENT_QUOTES,
+                                "UTF-8"
+                            );
+                            ?>
+                        </td>
+
+                        <td>
+                            <?php
+                            echo htmlspecialchars(
+                                $meal["day"] ?? "",
+                                ENT_QUOTES,
+                                "UTF-8"
+                            );
+                            ?>
+                        </td>
+
+                        <td>
+                            <?php
+                            echo htmlspecialchars(
+                                (string) ($meal["calories"] ?? 0),
+                                ENT_QUOTES,
+                                "UTF-8"
+                            );
+                            ?>
+                        </td>
+
+                        <td>
+                            <div class="meal-table-actions">
+                                <a
+                                    href="view_single_meal.php?id=<?php echo (int) $meal["id"]; ?>"
+                                    class="view-btn"
+                                >View</a>
+
+                                <a
+                                    href="edit_meal.php?id=<?php echo (int) $meal["id"]; ?>"
+                                    class="edit-btn"
+                                >Edit</a>
+
+                                <a
+                                    href="delete_meal.php?id=<?php echo (int) $meal["id"]; ?>"
+                                    class="delete-btn"
+                                    onclick="return confirm('Are you sure you want to delete this meal?');"
+                                >Delete</a>
+                            </div>
+                        </td>
+                    </tr>
+
+                <?php endforeach; ?>
+
+            </tbody>
+        </table>
     </div>
 
-<?php
-    }
-}
-?>
+    <div
+        class="meal-empty-state"
+        id="mealEmptyState"
+        <?php echo $totalMeals > 0 ? "hidden" : ""; ?>
+    >
+        <h3>No meals found</h3>
+    </div>
+
+</main>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const searchInput = document.getElementById("liveSearch");
-    const mealCards = document.querySelectorAll(".meal-card");
-    const categoryHeaders = document.querySelectorAll(".category-header");
+    const searchInput = document.getElementById("searchInput");
+    const searchForm = document.getElementById("mealSearchForm");
+    const categoryFilter = document.getElementById("categoryFilter");
+    const sortFilter = document.getElementById("sortFilter");
+    const resultsHeading = document.getElementById("mealResultsHeading");
+    const emptyState = document.getElementById("mealEmptyState");
+    const tableBody = document.getElementById("mealTableBody");
 
-    if (!searchInput) return;
+    const mealRows = Array.from(
+        tableBody.querySelectorAll(".meal-row")
+    );
 
-    function filterMeals() {
+    function updateMeals() {
         const query = searchInput.value.trim().toLowerCase();
+        const category = categoryFilter.value;
+        const sort = sortFilter.value;
 
-        mealCards.forEach(function (card) {
-            const title = card.querySelector("h2");
-            const mealName = title
-                ? title.textContent.trim().toLowerCase()
-                : "";
+        // Sort all rows before applying the filters.
+        const sortedRows = [...mealRows].sort(function (a, b) {
+            const nameA = a.cells[0].textContent.trim();
+            const nameB = b.cells[0].textContent.trim();
 
-            card.style.display =
-                query === "" || mealName.startsWith(query)
-                    ? ""
-                    : "none";
+            const caloriesA =
+                Number(a.cells[3].textContent.trim()) || 0;
+            const caloriesB =
+                Number(b.cells[3].textContent.trim()) || 0;
+
+            switch (sort) {
+                case "az":
+                    return nameA.localeCompare(nameB);
+
+                case "za":
+                    return nameB.localeCompare(nameA);
+
+                case "low_high":
+                    return caloriesA - caloriesB;
+
+                case "high_low":
+                    return caloriesB - caloriesA;
+
+                case "newest":
+                default:
+                    return mealRows.indexOf(b) - mealRows.indexOf(a);
+            }
         });
 
-        categoryHeaders.forEach(function (header) {
-            const category = (header.dataset.category || "")
-                .trim().toLowerCase();
+        let visibleCount = 0;
 
-            const hasVisibleMeal = Array.from(mealCards).some(
-                function (card) {
-                    return (
-                        (card.dataset.category || "").toLowerCase() === category &&
-                        card.style.display !== "none"
-                    );
-                }
-            );
+        sortedRows.forEach(function (row) {
+            // Append also applies the new sorting order.
+            tableBody.appendChild(row);
 
-            header.style.display =
-                query === "" || hasVisibleMeal ? "" : "none";
+            const text = (
+                row.getAttribute("data-search") || ""
+            ).toLowerCase();
+
+            const rowCategory = row.cells[1].textContent.trim();
+
+            const matchesSearch = text.includes(query);
+            const matchesCategory =
+                category === "" || rowCategory === category;
+
+            const visible = matchesSearch && matchesCategory;
+
+            row.style.display = visible ? "" : "none";
+
+            if (visible) {
+                visibleCount++;
+            }
         });
+
+        resultsHeading.textContent =
+            "Your Meals (" + visibleCount + ")";
+
+        emptyState.hidden = visibleCount > 0;
     }
 
-    searchInput.addEventListener("input", filterMeals);
-    filterMeals();
+    searchInput.addEventListener("input", updateMeals);
+    categoryFilter.addEventListener("change", updateMeals);
+    sortFilter.addEventListener("change", updateMeals);
+
+    searchForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        updateMeals();
+    });
+
+    updateMeals();
 });
 </script>
 
 
-
-</body> 
+</body>
 </html>
+
+<?php
+mysqli_stmt_close($stmt);
+?>

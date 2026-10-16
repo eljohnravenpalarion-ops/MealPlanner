@@ -73,6 +73,7 @@ $days = [
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Meal Planner</title>
@@ -89,7 +90,7 @@ $days = [
             <p>Welcome to your dashboard!</p>
         </div>
 
-     <img src="dashboard-food.jpg.jfif"
+     <img src="image/dashboard-food.jpg.jfif"
      alt="Fresh vegetables and healthy food"
      class="dashboard-food-image">
     </header>
@@ -185,7 +186,18 @@ $days = [
 
     </main>
 
+<script src="https://unpkg.com/lucide@latest"></script>
 
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    if (window.lucide) {
+        lucide.createIcons();
+        console.log("Lucide icons loaded!");
+    } else {
+        console.log("Lucide library did not load.");
+    }
+});
+</script>
     
 </body>
 </html>

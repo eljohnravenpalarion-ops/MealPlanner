@@ -1,7 +1,11 @@
+
 <?php
 session_start();
 require_once "db.php";
-
+$registrationSuccess = isset($_GET["registered"])
+    && $_GET["registered"] === "success";
+$usernameInvalid = false;
+$passwordInvalid = false;
 if ($_SERVER["REQUEST_METHOD"]== "POST") {
     $username = $_POST ["username"];
     $password = $_POST ["password"];
@@ -12,7 +16,7 @@ $result=mysqli_query($conn,$sql);
 
 if (mysqli_num_rows($result)==0 ) {
 
-    echo "Username not found. ";
+  $usernameInvalid = true;
 
 } else {
     $user = mysqli_fetch_assoc($result);
@@ -26,7 +30,7 @@ if (password_verify($password, $user["password"])){
 
 
 } else {
-    echo "Incorrect password. ";
+ $passwordInvalid = true;
 }
 
 
@@ -43,7 +47,6 @@ if (password_verify($password, $user["password"])){
 
 
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -52,19 +55,28 @@ if (password_verify($password, $user["password"])){
     <title>Login-Meal Planner</title>
     <link rel="stylesheet" href="style.css">
 </head>
+<script>
+const errorToast = document.getElementById("loginErrorToast");
+
+if (errorToast) {
+    setTimeout(() => {
+        errorToast.classList.add("hide");
+
+        setTimeout(() => {
+            errorToast.remove();
+        }, 300);
+    }, 2500);
+}
+</script>
 <body>
 
 <div class="login-page">
 
     <div class="login-image">
 
-        <img src="login-food.jpg.jfif"
+        <img src="image/login-food.jpg.jfif"
              alt="Fresh vegetables and healthy food">
 
-        <div class="login-image-text">
-            <h2>Eat Healthy.<br>Plan Better.</h2>
-            <p>Good food fuels a better tomorrow.</p>
-        </div>
 
     </div>
 
@@ -86,20 +98,31 @@ if (password_verify($password, $user["password"])){
             <label>Username</label>
 
             <input
-                type="text"
-                name="username"
-                placeholder="Enter your username"
-                required
-            >
+    type="text"
+    name="username"
+    value="<?= htmlspecialchars($username ?? '', ENT_QUOTES, 'UTF-8') ?>"
+    class="<?= $usernameInvalid ? 'input-error' : '' ?>"
+    placeholder="Enter your username"
+    required
+>
+
+<?php if ($usernameInvalid): ?>
+    <small class="field-error">Incorrect username.</small>
+<?php endif; ?>
 
             <label>Password</label>
 
-            <input
-                type="password"
-                name="password"
-                placeholder="Enter your password"
-                required
-            >
+           <input
+    type="password"
+    name="password"
+    class="<?= $passwordInvalid ? 'input-error' : '' ?>"
+    placeholder="Enter your password"
+    required
+>
+
+<?php if ($passwordInvalid): ?>
+    <small class="field-error">Incorrect password.</small>
+<?php endif; ?>
 
             <button type="submit">
                 → &nbsp; Login
@@ -115,6 +138,12 @@ if (password_verify($password, $user["password"])){
     </div>
 
 </div>
-
+<?php if ($registrationSuccess): ?>
+    <script>
+        alert("Account created successfully! You can now log in.");
+    </script>
+<?php endif; ?>
 </body>
+
+
 </html>
