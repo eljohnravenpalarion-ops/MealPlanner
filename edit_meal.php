@@ -68,6 +68,7 @@
                     <!DOCTYPE html>
                     <html lang="en">
                     <head>
+                        <script src="https://unpkg.com/lucide@latest"></script>
                         <meta charset="UTF-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                         <title>Edit Meal</title>
@@ -75,50 +76,127 @@
                     </head>
                     <body>
                         <?php require_once "sidebar.php"; ?>
-                        <h1 class="edit-meal-title">Edit Meal</h1>
-                        <div class="form-card">
+                        <main class="add-meal-page">
 
-                        <form method="POST">
+    <h1 class="add-meal-title">Edit Meal</h1>
 
-                        
-                        <label>Meal Name:</label>
-                <input type="text" name="meal_name"
-                    value="<?php echo htmlspecialchars($meal["meal_name"] ?? ""); ?>">
+    <div class="form-card add-meal-card">
 
-                <br><br>
+        <form method="POST" class="add-meal-grid">
 
-                <label>Category:</label>
-                <input type="text" name="category"
-                    value="<?php echo htmlspecialchars($meal["category"] ?? ""); ?>">
-
-                <br><br>
-
-                <label>Day:</label>
-                <input type="text" name="day"
-                    value="<?php echo htmlspecialchars($meal["day"] ?? ""); ?>">
-
-                <br><br>
-
-                <label>Calories:</label>
-                <input type="number" name="calories"
-                    value="<?php echo htmlspecialchars($meal["calories"] ?? ""); ?>">
-
-                <br><br>
-
-                <label>Ingredients:</label>
-                <textarea name="ingredients"><?php echo htmlspecialchars($meal["ingredients"] ?? ""); ?></textarea>
-
-                <br><br>
-
-                <label>Description:</label>
-                <textarea name="description"><?php echo htmlspecialchars($meal["description"] ?? ""); ?></textarea>
-                            <br><br>
-
-                            <button type="submit">Update Meal</button>
-
-
-            </form>
-
+            <div class="add-meal-field">
+                <label for="meal_name">Meal Name</label>
+                <input
+                    type="text"
+                    id="meal_name"
+                    name="meal_name"
+                    value="<?php echo htmlspecialchars($meal["meal_name"] ?? ""); ?>"
+                    required
+                >
             </div>
-     </body>
-     </html>
+
+            <div class="add-meal-field">
+                <label for="category">Category</label>
+                <?php
+                $editCategories = ["Breakfast", "Lunch", "Dinner", "Snacks"];
+                $currentCategory = (string)($meal["category"] ?? "");
+
+                if ($currentCategory !== "" &&
+                    !in_array($currentCategory, $editCategories, true)) {
+                    array_unshift($editCategories, $currentCategory);
+                }
+                ?>
+                <select name="category" id="category" required>
+                    <option value="">Select Category</option>
+                    <?php foreach ($editCategories as $cat): ?>
+                        <option
+                            value="<?php echo htmlspecialchars($cat); ?>"
+                            <?php echo $currentCategory === $cat ? "selected" : ""; ?>
+                        >
+                            <?php echo htmlspecialchars($cat); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="add-meal-field">
+                <label for="day">Day</label>
+                <?php
+                $editDays = [
+                    "Monday", "Tuesday", "Wednesday", "Thursday",
+                    "Friday", "Saturday", "Sunday"
+                ];
+                $currentDay = (string)($meal["day"] ?? "");
+
+                if ($currentDay !== "" &&
+                    !in_array($currentDay, $editDays, true)) {
+                    array_unshift($editDays, $currentDay);
+                }
+                ?>
+                <select name="day" id="day" required>
+                    <option value="">Select Day</option>
+                    <?php foreach ($editDays as $weekday): ?>
+                        <option
+                            value="<?php echo htmlspecialchars($weekday); ?>"
+                            <?php echo $currentDay === $weekday ? "selected" : ""; ?>
+                        >
+                            <?php echo htmlspecialchars($weekday); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="add-meal-field">
+                <label for="calories">Calories</label>
+                <input
+                    type="number"
+                    id="calories"
+                    name="calories"
+                    min="0"
+                    step="any"
+                    value="<?php echo htmlspecialchars($meal["calories"] ?? ""); ?>"
+                    required
+                >
+            </div>
+
+            <div class="add-meal-field">
+                <label for="ingredients">Ingredients</label>
+                <textarea
+                    id="ingredients"
+                    name="ingredients"
+                    rows="4"
+                    required
+                ><?php echo htmlspecialchars($meal["ingredients"] ?? ""); ?></textarea>
+            </div>
+
+            <div class="add-meal-field">
+                <label for="description">Description</label>
+                <textarea
+                    id="description"
+                    name="description"
+                    rows="4"
+                    required
+                ><?php echo htmlspecialchars($meal["description"] ?? ""); ?></textarea>
+            </div>
+
+            <div class="add-meal-actions">
+                <button type="submit">
+                    <i data-lucide="save"></i>
+                    Update Meal
+                </button>
+            </div>
+
+        </form>
+    </div>
+
+</main>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+</script>
+
+</body>
+</html>
