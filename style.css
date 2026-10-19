@@ -2702,3 +2702,97 @@ a[href="add_meal.php"] svg,
     background: #fff1f0;
     border: 1px solid #f0c8c5;
 }
+
+
+/* CHANGE PASSWORD VERTICAL LAYOUT */
+.change-password-page {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+.change-password-title {
+    text-align: center;
+    margin: 25px auto 20px;
+    color: var(--text-heading);
+}
+
+.form-card.change-password-card {
+    width: 100%;
+    max-width: 650px;
+    margin: 0 auto 40px;
+    padding: 30px;
+    box-sizing: border-box;
+}
+
+.change-password-form {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px;
+    width: 100%;
+}
+
+.change-password-field {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+}
+
+.change-password-field label {
+    display: block;
+    margin: 0;
+    padding: 0;
+}
+
+.change-password-field input {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.change-password-actions {
+    width: 100%;
+}
+
+.change-password-actions button {
+    width: 100%;
+}
+
+.password-status-message {
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 auto 20px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.password-status-message.success {
+    color: #246b35;
+    background: #edf8ef;
+    border: 1px solid #cce8d1;
+}
+
+.password-status-message.error {
+    color: #9b2c2c;
+    background: #fff1f0;
+    border: 1px solid #f0c8c5;
+}
+
+@media (max-width: 600px) {
+    .change-password-page {
+        padding: 0 12px;
+    }
+
+    .form-card.change-password-card {
+        padding: 20px;
+    }
+}

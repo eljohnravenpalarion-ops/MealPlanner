@@ -88,6 +88,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <!DOCTYPE html>
 <html lang="en">
 <head>
+      <script src="https://unpkg.com/lucide@latest"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Change Password</title>
@@ -97,19 +98,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <body>
     <?php require_once "sidebar.php"; ?>
 
-    <main class="add-meal-page">
-        <h1 class="add-meal-title">Change Password</h1>
+    <main class="change-password-page">
+        <h1 class="change-password-title">Change Password</h1>
 
-        <div class="form-card add-meal-card">
+        <div class="form-card change-password-card">
             <?php if ($message !== ""): ?>
     <div class="password-status-message <?php echo $message === 'Password changed successfully.' ? 'success' : 'error'; ?>" role="status" aria-live="polite">
         <?php echo htmlspecialchars($message, ENT_QUOTES, "UTF-8"); ?>
     </div>
 <?php endif; ?>
 
-            <form method="POST" class="add-meal-grid">
+            <form method="POST" class="change-password-form">
 
-                <div class="add-meal-field">
+                <div class="change-password-field">
                     <label for="current_password">Current Password</label>
                     <input
                         type="password"
@@ -120,7 +121,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     >
                 </div>
 
-                <div class="add-meal-field">
+                <div class="change-password-field">
                     <label for="new_password">New Password</label>
                     <input
                         type="password"
@@ -131,7 +132,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     >
                 </div>
 
-                <div class="add-meal-field">
+                <div class="change-password-field">
                     <label for="confirm_password">Confirm New Password</label>
                     <input
                         type="password"
@@ -142,7 +143,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     >
                 </div>
 
-                <div class="add-meal-actions">
+                <div class="change-password-actions">
                     <button type="submit">
                         <i data-lucide="lock-keyhole"></i>
                         Change Password
