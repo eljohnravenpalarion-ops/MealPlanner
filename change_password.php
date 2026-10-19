@@ -1,90 +1,166 @@
 <?php
-
 session_start();
-require_once "db.php";
 
 if (!isset($_SESSION["user_id"])) {
     header("Location: login.php");
     exit();
 }
 
-$user_id = $_SESSION["user_id"];
+require_once "db.php";
 
+$user_id = (int) $_SESSION["user_id"];
 $message = "";
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    $current_password = $_POST["current_password"];
-    $new_password = $_POST["new_password"];
-    $confirm_password = $_POST["confirm_password"];
+    $current_password = $_POST["current_password"] ?? "";
+    $new_password = $_POST["new_password"] ?? "";
+    $confirm_password = $_POST["confirm_password"] ?? "";
 
-    $sql = "SELECT password FROM `user` WHERE id = '$user_id'";
-    $result = mysqli_query($conn, $sql);
+    // Retrieve the existing password hash securely
+    $stmt = mysqli_prepare(
+        $conn,
+        "SELECT password FROM `user` WHERE id = ?"
+    );
 
-    $user = mysqli_fetch_assoc($result);
-
-    if (!password_verify($current_password, $user["password"])) {
-
-        $message = "Current password is incorrect.";
-
-    } elseif ($new_password != $confirm_password) {
-
-        $message = "New passwords do not match.";
-
+    if (!$stmt) {
+        $message = "Unable to verify your current password.";
     } else {
+        mysqli_stmt_bind_param($stmt, "i", $user_id);
+        mysqli_stmt_execute($stmt);
 
-        $new_password_hash = password_hash($new_password, PASSWORD_DEFAULT);
+        $result = mysqli_stmt_get_result($stmt);
+        $user = mysqli_fetch_assoc($result);
 
-        $update_sql = "UPDATE `user`
-                       SET password = '$new_password_hash'
-                       WHERE id = '$user_id'";
+        mysqli_stmt_close($stmt);
 
-        if (mysqli_query($conn, $update_sql)) {
-            $message = "Password changed successfully.";
+        if (!$user || !password_verify($current_password, $user["password"])) {
+
+            $message = "Current password is incorrect.";
+
+        } elseif ($new_password === "") {
+
+            $message = "Please enter a new password.";
+
+        } elseif ($new_password !== $confirm_password) {
+
+            $message = "New passwords do not match.";
+
+        } elseif (password_verify($new_password, $user["password"])) {
+
+            // Prevent reusing the current password
+            $message = "Your new password must be different from your current password.";
+
         } else {
-            $message = "Failed to change password.";
+
+            $new_password_hash = password_hash(
+                $new_password,
+                PASSWORD_DEFAULT
+            );
+
+            $update = mysqli_prepare(
+                $conn,
+                "UPDATE `user` SET password = ? WHERE id = ?"
+            );
+
+            if (!$update) {
+                $message = "Failed to prepare the password update.";
+            } else {
+                mysqli_stmt_bind_param(
+                    $update,
+                    "si",
+                    $new_password_hash,
+                    $user_id
+                );
+
+                if (mysqli_stmt_execute($update)) {
+                    $message = "Password changed successfully.";
+                } else {
+                    $message = "Failed to change password.";
+                }
+
+                mysqli_stmt_close($update);
+            }
         }
     }
 }
-
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
-<head>  <script src="https://unpkg.com/lucide@latest"></script>
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Change Password</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-
 <body>
- <?php require_once "sidebar.php"; ?>
-    <div class="form-card">
+    <?php require_once "sidebar.php"; ?>
 
-    <h1>Change Password</h1>
+    <main class="add-meal-page">
+        <h1 class="add-meal-title">Change Password</h1>
 
-    <?php echo $message; ?>
+        <div class="form-card add-meal-card">
+            <?php if ($message !== ""): ?>
+                <p role="status">
+                    <?php echo htmlspecialchars($message, ENT_QUOTES, "UTF-8"); ?>
+                </p>
+            <?php endif; ?>
 
-    <form method="POST">
+            <form method="POST" class="add-meal-grid">
 
-        <label>Current Password:</label>
-        <input type="password" name="current_password" required>
+                <div class="add-meal-field">
+                    <label for="current_password">Current Password</label>
+                    <input
+                        type="password"
+                        id="current_password"
+                        name="current_password"
+                        autocomplete="current-password"
+                        required
+                    >
+                </div>
 
-        <label>New Password:</label>
-        <input type="password" name="new_password" required>
+                <div class="add-meal-field">
+                    <label for="new_password">New Password</label>
+                    <input
+                        type="password"
+                        id="new_password"
+                        name="new_password"
+                        autocomplete="new-password"
+                        required
+                    >
+                </div>
 
-        <label>Confirm New Password:</label>
-        <input type="password" name="confirm_password" required>
+                <div class="add-meal-field">
+                    <label for="confirm_password">Confirm New Password</label>
+                    <input
+                        type="password"
+                        id="confirm_password"
+                        name="confirm_password"
+                        autocomplete="new-password"
+                        required
+                    >
+                </div>
 
-        <button type="submit">Change Password</button>
+                <div class="add-meal-actions">
+                    <button type="submit">
+                        <i data-lucide="lock-keyhole"></i>
+                        Change Password
+                    </button>
+                </div>
 
-    </form>
+            </form>
 
-    <br>
+            <p>
+                <a class="dashboard-button" href="profile.php">Back to Profile</a>
+            </p>
+        </div>
+    </main>
 
-    <a class="dashboard-button" href="profile.php">Back to Profile</a>
-</div>
-
+    <script>
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    </script>
 </body>
 </html>
