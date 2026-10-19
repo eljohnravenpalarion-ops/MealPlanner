@@ -102,10 +102,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         <div class="form-card add-meal-card">
             <?php if ($message !== ""): ?>
-                <p role="status">
-                    <?php echo htmlspecialchars($message, ENT_QUOTES, "UTF-8"); ?>
-                </p>
-            <?php endif; ?>
+    <div class="password-status-message <?php echo $message === 'Password changed successfully.' ? 'success' : 'error'; ?>" role="status" aria-live="polite">
+        <?php echo htmlspecialchars($message, ENT_QUOTES, "UTF-8"); ?>
+    </div>
+<?php endif; ?>
 
             <form method="POST" class="add-meal-grid">
 

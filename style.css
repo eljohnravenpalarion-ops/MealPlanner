@@ -2677,3 +2677,28 @@ a[href="add_meal.php"] svg,
 #searchInput::placeholder {
     font-size: 13px !important;
 }
+
+
+/* CENTER PASSWORD STATUS MESSAGES */
+.password-status-message {
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0 auto 20px;
+    padding: 12px 16px;
+    text-align: center;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.password-status-message.success {
+    color: #246b35;
+    background: #edf8ef;
+    border: 1px solid #cce8d1;
+}
+
+.password-status-message.error {
+    color: #9b2c2c;
+    background: #fff1f0;
+    border: 1px solid #f0c8c5;
+}
